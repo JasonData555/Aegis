@@ -1,0 +1,296 @@
+# Aegis — Design System
+
+
+## Design Philosophy
+
+
+Aegis is a personal intelligence tool for security executives.
+The aesthetic is warm, precise, and trustworthy — the emotional
+register of a premium personal finance tool meeting a
+high-end health dashboard.
+
+
+The user is looking at their own sensitive data in private.
+Every design decision serves one goal: make complex market
+data feel immediately clear and personally meaningful.
+
+
+Contrast with Paragon (our B2B tool): Paragon signals
+institutional authority. Aegis signals personal clarity.
+Same data. Different emotional register. Different product.
+
+
+Design reference points:
+  Apple Health — personal data made human
+  Linear — precision without coldness
+  Levels.fyi (aspirational) — comp data made scannable
+  Stripe Dashboard — trust through craft
+
+
+One rule: if a design element cannot be explained in terms
+of what it communicates to the user, remove it.
+
+
+---
+
+
+## Typography
+
+
+Primary font: Geist (Vercel) — free, built for Next.js,
+excellent numeric rendering, warm precision
+  Import: next/font/google or Vercel font package
+  Weights: 400 (body), 500 (emphasis), 600 (headings)
+  Letter-spacing: -0.01em on headings, 0 on body
+
+
+Mono font: JetBrains Mono
+  Used exclusively for: dollar amounts, percentages,
+  percentile values, scores, record counts, axis labels
+  Never use for narrative text or labels
+  Weight: 400 always
+  The mono/sans contrast is intentional — it signals
+  "this is a precise data value" vs "this is human language"
+
+
+Future upgrade: Söhne by Klim Type Foundry (~$200)
+  Replace Geist with Söhne when validating with
+  first external users. The difference is meaningful
+  at the level of trust this product needs to convey.
+
+
+Type scale:
+  Display:    36px / 600 / line-height 1.1
+  Heading 1:  28px / 600 / line-height 1.2
+  Heading 2:  22px / 600 / line-height 1.3
+  Heading 3:  18px / 500 / line-height 1.4
+  Body:       15px / 400 / line-height 1.7
+  Label:      12px / 500 / letter-spacing 0.05em / uppercase
+  Caption:    12px / 400 / line-height 1.5
+  Data large: 36px / JetBrains Mono / 400
+  Data body:  14px / JetBrains Mono / 400
+  Data small: 12px / JetBrains Mono / 400
+
+
+---
+
+
+## Color Tokens
+
+
+All colors defined as aegis-* in tailwind.config.ts
+
+
+Backgrounds:
+  aegis-bg-base:      #FAFAF8   Page background — warm near-white
+  aegis-bg-card:      #FFFFFF   Card surfaces
+  aegis-bg-subtle:    #F4F1EC   Section backgrounds, input fills
+  aegis-bg-dark:      #1C2B2A   Dark header, landing hero, footer
+
+
+Brand:
+  aegis-brand:        #2D7A6B   Primary brand — deeper teal
+  aegis-brand-light:  #4BA898   Hover states, secondary actions
+  aegis-brand-soft:   #E8F5F2   Soft brand tint, selected states
+  aegis-brand-dark:   #1A5C50   Active states, dark accents
+
+
+Accent (use sparingly — personal/human moments only):
+  aegis-accent:       #C4784A   Warm copper
+  aegis-accent-soft:  #FAF0E8   Copper tint backgrounds
+
+
+Text:
+  aegis-text-primary: #1C2B2A   Headings, primary body
+  aegis-text-body:    #3D4F4E   Standard body text
+  aegis-text-muted:   #7A908E   Captions, secondary labels
+  aegis-text-subtle:  #A8BFBD   Placeholders, disabled states
+
+
+Borders:
+  aegis-border:       #E2DDD6   Standard card borders
+  aegis-border-strong:#C8C3BC   Emphasized borders
+
+
+Semantic:
+  aegis-success:      #2D7A6B   Above market, strong position
+  aegis-warning:      #C4784A   Attention, missing protections
+  aegis-danger:       #C0392B   Below market, risk signals
+  aegis-neutral:      #8A9E9C   Average position, neutral states
+
+
+Color usage rules:
+  Brand colors: primary CTAs, active states, positive signals,
+  "you have this" indicators
+  Accent/copper: "you may be missing this" prompts — warm not
+  alarming. Never for errors.
+  Danger red: only for below P25 comp position and zero
+  protection state. Use sparingly — this is someone's
+  personal data and red is alarming.
+  Neutral: for benchmark reference lines and peer data that
+  is context, not signal
+
+
+---
+
+
+## Layout
+
+
+Page structure:
+  Background: aegis-bg-base
+  Single column, centered
+  Max content width: 760px
+  Horizontal padding: 24px mobile, 40px desktop
+  Not a dashboard. Not a two-column tool.
+  A personal document the user reads top to bottom.
+
+
+Sticky summary strip:
+  Height: 72px
+  Background: aegis-bg-dark with 0.95 opacity
+  Backdrop blur: 8px
+  Sits below the header, above the first card
+  Never scrolls away — contains the three headline answers
+  Three equal-width sections divided by 1px aegis-border
+  with 0.2 opacity
+
+
+Card spacing: 20px gap between cards
+Card padding: 24px
+Card radius: 16px (rounder than Paragon — more personal)
+Card shadow: 0 1px 4px rgba(0,0,0,0.06),
+             0 4px 16px rgba(0,0,0,0.04)
+Card hover shadow: 0 2px 8px rgba(0,0,0,0.08),
+                   0 8px 24px rgba(0,0,0,0.06)
+
+
+---
+
+
+## Component Specifications
+
+
+### PercentileBar
+Full width, 10px height, 6px border-radius
+Track: aegis-border
+Distribution fill (left to right):
+  0-P25: white (no fill)
+  P25-P75: aegis-brand-soft
+  P75-P90: aegis-brand-light at 60% opacity
+  P90-P100: aegis-brand at 40% opacity
+Contributor marker: 12px circle
+  Fill: white, border: 2px solid aegis-brand-dark
+  Shadow: 0 2px 6px rgba(45,122,107,0.3)
+  Label above: "You — $XXXk" 12px DM Sans 500 aegis-brand-dark
+Tick marks at P25/P50/P75: 1px aegis-border, 6px tall
+Tick labels: JetBrains Mono 11px aegis-text-subtle
+
+
+### Protection Row
+Height: 52px, padding 12px 0
+Left: icon (20px) + name (DM Sans 14px 500)
+Center: status pill
+  "You have this": aegis-brand-soft bg, aegis-brand text,
+  20px radius, 12px font
+  "Not in your package": aegis-bg-subtle bg,
+  aegis-text-muted text
+Right: prevalence bar (80px wide, 4px height) + premium
+  Bar fill: aegis-brand-soft to aegis-brand proportional
+  to prevalence %
+  Premium: JetBrains Mono 13px aegis-brand (if has it)
+           JetBrains Mono 13px aegis-text-muted (if missing)
+Missing prompt (when peer prevalence >40% and missing):
+  Below row, indented 32px
+  "→ [X]% of your peers have this. Typical premium: +$XXXk"
+  13px DM Sans 400 aegis-accent italic
+
+
+### Mini Traction Matrix
+Size: 240px × 200px
+Quadrant fills (45% opacity):
+  Paragon Leader (top right): aegis-brand-soft
+  Specialist Surgeon (top left): #EEF2FF
+  Utility Player (bottom right): aegis-accent-soft
+  Generalist (bottom left): aegis-bg-subtle
+Contributor dot: 10px circle, aegis-brand fill,
+  white border 2px, shadow 0 2px 8px rgba(45,122,107,0.4)
+Axis labels: "Scope →" bottom center, "Complexity ↑" left
+  12px DM Sans 500 aegis-text-muted
+No peer dots in Aegis — this is personal, not comparative
+
+
+### Sticky Summary Strip
+Three sections equal width, divided by hairline borders
+Each section:
+  Top: value in JetBrains Mono 22px white
+  Bottom: label in 11px DM Sans 500 uppercase
+    letter-spacing 0.05em, #7A908E
+Comp section: percentile value + "th" superscript
+Quadrant section: colored pill (same quadrant colors)
+Protection section: "X of 4" with dot indicators
+
+
+---
+
+
+## Interactions and Animation
+
+
+Page transitions: 300ms ease-out fade
+Card entrance: fade-in-up 200ms, translateY 12px,
+  staggered 80ms per card
+Percentile bar: marker slides to position 400ms ease-out
+  after card renders, 200ms delay
+Stat numbers: count-up 500ms on first render
+Mode toggle: scorecard fades out 150ms, new result
+  fades in 200ms on mode change
+Contribution form steps: slide left/right 250ms ease
+  between steps — feels like turning pages
+Loading state: three dots pulsing in aegis-brand color,
+  not a spinner — more human, less mechanical
+Hover on cards: shadow deepens 200ms, no scale
+  (scale feels wrong for personal data — too playful)
+Button press: scale(0.97) 100ms
+
+
+---
+
+
+## Voice and Tone
+
+
+Headlines: direct and personal. "You're in the top third."
+Not "Your compensation is at the 68th percentile."
+
+
+Data captions: precise and honest. "Based on 47 verified peers."
+Not "Based on a robust dataset of verified professionals."
+
+
+Missing protection prompts: helpful, not alarming.
+"71% of your peers have this" not "You are missing this."
+
+
+Methodology notes: confident and transparent.
+Own the limitations. They build trust.
+
+
+Error states: calm and specific.
+"Your peer group is too small to display this safely.
+Try removing the industry filter."
+Not "An error occurred. Please try again."
+
+
+---
+
+
+## What Aegis Is Not
+
+
+Not a dashboard — no sidebar, no tabs, no multiple views
+Not a report generator — no export-first design
+Not a sales tool — no upsell prompts, no feature gates
+Not alarming — red is used sparingly, copper for attention
+Not Paragon — different font, different radius, different
+  color temperature, different layout, different tone
