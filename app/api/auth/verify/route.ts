@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing token.' }, { status: 400 });
   }
 
-  const email = consumeMagicLinkToken(token);
+  const email = await consumeMagicLinkToken(token);
   if (!email) {
     return NextResponse.json(
       { error: 'This link has expired or already been used. Request a new one.' },
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { contributor_id, is_new } = getOrCreateContributorId(hashEmail(email));
+  const { contributor_id, is_new } = await getOrCreateContributorId(hashEmail(email));
 
   const res = NextResponse.json({
     redirect: is_new ? '/onboarding/contribute' : '/scorecard',

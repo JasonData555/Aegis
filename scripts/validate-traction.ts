@@ -74,12 +74,13 @@ check('Low FSS / High SI', classifyTractionZone(5, 80, 8, 60), 'Specialist Surge
 check('High FSS / Low SI', classifyTractionZone(10, 40, 8, 60), 'Utility Player');
 check('Low FSS / Low SI', classifyTractionZone(5, 40, 8, 60), 'Generalist');
 
+async function runDataChecks() {
 console.log('\n— Data loader (../Paragon/data/survey.json) —');
-const records = loadSurveyData();
+const records = await loadSurveyData();
 console.log(`Loaded ${records.length} survey records`);
 check('records loaded', records.length > 0, true);
 check('emails stripped at load', records.every(r => r.email === null), true);
-const weighted = loadWeightedData();
+const weighted = await loadWeightedData();
 console.log(`Recency-weighted records (age ≤ 24 months): ${weighted.length}`);
 
 console.log('\n— K=15 anonymity —');
@@ -110,7 +111,7 @@ if (!broad.suppressed) {
 }
 
 console.log('\n— End-to-end scorecard query —');
-const result = executeScorecardQuery(baseParams);
+const result = await executeScorecardQuery(baseParams);
 if ('peer_n' in result) {
   console.log(
     `peer_n=${result.peer_n}, weighted_n=${result.weighted_n}, confidence=${result.confidence}`,
@@ -126,3 +127,6 @@ if ('peer_n' in result) {
 
 console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);
+}
+
+runDataChecks();

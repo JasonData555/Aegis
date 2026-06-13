@@ -153,10 +153,10 @@ function calcTractionResult(
 // Main entry point
 // ---------------------------------------------------------------------------
 
-export function executeScorecardQuery(
+export async function executeScorecardQuery(
   params: ScorecardParams,
-): ScorecardResult | SuppressedResult {
-  const allWeighted = loadWeightedData();
+): Promise<ScorecardResult | SuppressedResult> {
+  const allWeighted = await loadWeightedData();
 
   // K=15 enforcement happens before any aggregate is touched
   const match = matchPeers(allWeighted, params);

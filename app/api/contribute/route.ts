@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     : [];
 
   // Score against role_tier + size_bucket peers — never reject, flag and weight
-  const peers = loadSurveyData().filter(
+  const peers = (await loadSurveyData()).filter(
     r => r.role_tier === role_tier && r.size_bucket === size_bucket,
   );
   const { contribution_confidence, validation_flags } = scoreContribution(
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
   };
 
   try {
-    addContribution(record);
+    await addContribution(record);
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Failed to store contribution.' },

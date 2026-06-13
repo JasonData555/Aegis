@@ -65,5 +65,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: params.error }, { status: 400 });
   }
 
-  return NextResponse.json(executeScorecardQuery(params));
+  return NextResponse.json(await executeScorecardQuery(params));
 }

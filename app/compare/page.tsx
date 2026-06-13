@@ -10,11 +10,11 @@ import type { ScorecardParams } from '@/lib/types';
 // Standalone entry point for side-by-side comparison — same view as the
 // scorecard, opened directly in Compare mode.
 
-export default function ComparePage() {
+export default async function ComparePage() {
   const session = verifySessionValue(cookies().get(SESSION_COOKIE_NAME)?.value);
   if (!session) redirect('/');
 
-  const contributions = getContributionsByContributor(session.contributor_id);
+  const contributions = await getContributionsByContributor(session.contributor_id);
   if (contributions.length === 0) redirect('/onboarding/contribute');
   const latest = contributions[contributions.length - 1];
 
@@ -37,7 +37,7 @@ export default function ComparePage() {
     has_accel_vest: latest.has_accel_vest,
   };
 
-  const result = executeScorecardQuery(params);
+  const result = await executeScorecardQuery(params);
 
   if ('suppression_reason' in result) {
     redirect('/scorecard'); // scorecard shows the suppression state
@@ -49,7 +49,7 @@ export default function ComparePage() {
       params={params}
       roleTitle={latest.role_title}
       teamSize={latest.team_size}
-      datasetN={loadSurveyData().length}
+      datasetN={(await loadSurveyData()).length}
       initialMode="compare"
     />
   );

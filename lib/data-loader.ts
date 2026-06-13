@@ -14,28 +14,44 @@ function getSurveyPath(): string {
     : path.resolve(process.cwd(), configured);
 }
 
+function parseRecords(raw: string): SurveyRecord[] {
+  try {
+    const parsed = JSON.parse(raw) as SurveyRecord[];
+    // Null emails at load time — they never flow into any Aegis calculation,
+    // response, or log, even though the hosted copy is already sanitized.
+    return Array.isArray(parsed) ? parsed.map(r => ({ ...r, email: null })) : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Reads the shared Paragon survey dataset (read-only from Aegis).
- * Email addresses are nulled at load time so they never flow into
- * any Aegis calculation, response, or log.
+ * Reads the shared survey dataset (read-only from Aegis).
+ *   Production: fetch the sanitized copy hosted in Vercel Blob (BLOB_SURVEY_URL).
+ *   Local dev / scripts: read PARAGON_DATA_PATH from disk.
+ * Email addresses are nulled at load time so they never flow into any Aegis
+ * calculation, response, or log.
  */
-export function loadSurveyData(): SurveyRecord[] {
+export async function loadSurveyData(): Promise<SurveyRecord[]> {
   if (_cache) return _cache;
+
+  const blobUrl = process.env.BLOB_SURVEY_URL;
+  if (blobUrl) {
+    try {
+      const res = await fetch(blobUrl, { cache: 'no-store' });
+      _cache = res.ok ? parseRecords(await res.text()) : [];
+    } catch {
+      _cache = [];
+    }
+    return _cache;
+  }
 
   const filePath = getSurveyPath();
   if (!existsSync(filePath)) {
     _cache = [];
     return _cache;
   }
-
-  try {
-    const raw = readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as SurveyRecord[];
-    _cache = Array.isArray(parsed) ? parsed.map(r => ({ ...r, email: null })) : [];
-  } catch {
-    _cache = [];
-  }
-
+  _cache = parseRecords(readFileSync(filePath, 'utf-8'));
   return _cache;
 }
 
@@ -63,6 +79,6 @@ export function applyRecencyWeights(records: SurveyRecord[], now?: Date): Weight
 /**
  * Convenience: full weighted dataset in one call.
  */
-export function loadWeightedData(now?: Date): WeightedRecord[] {
-  return applyRecencyWeights(loadSurveyData(), now);
+export async function loadWeightedData(now?: Date): Promise<WeightedRecord[]> {
+  return applyRecencyWeights(await loadSurveyData(), now);
 }

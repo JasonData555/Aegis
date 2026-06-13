@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import path from 'path';
+import { readJson, writeJson } from './blob-store';
 import {
   CONTRIBUTION_BASE_CONFIDENCE,
   CONTRIBUTION_CONFIDENCE_CEILING,
@@ -15,8 +14,8 @@ import type { ContributionRecord, SizeBucket, SurveyRecord } from './types';
 // Stripping is enforced here at the write layer, not just at the API route.
 // ---------------------------------------------------------------------------
 
-const CONTRIBUTIONS_PATH = path.join(process.cwd(), 'data', 'contributions.json');
-const EMAILMAP_PATH = path.join(process.cwd(), 'data', 'emailmap.json');
+const CONTRIBUTIONS_KEY = 'contributions.json';
+const EMAILMAP_KEY = 'emailmap.json';
 
 function assertWritesAllowed(): void {
   if (process.env.ALLOW_WRITES !== 'true') {
@@ -24,14 +23,9 @@ function assertWritesAllowed(): void {
   }
 }
 
-export function readContributions(): ContributionRecord[] {
-  if (!existsSync(CONTRIBUTIONS_PATH)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(CONTRIBUTIONS_PATH, 'utf-8'));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+export async function readContributions(): Promise<ContributionRecord[]> {
+  const parsed = await readJson<ContributionRecord[]>(CONTRIBUTIONS_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 const FORBIDDEN_KEYS = ['email', 'email_address', 'emailAddress', 'work_email'];
@@ -41,7 +35,7 @@ const FORBIDDEN_KEYS = ['email', 'email_address', 'emailAddress', 'work_email'];
  * and the serialized output is re-checked — an email key anywhere in the
  * record aborts the write entirely.
  */
-export function addContribution(record: ContributionRecord): void {
+export async function addContribution(record: ContributionRecord): Promise<void> {
   assertWritesAllowed();
 
   const sanitized = { ...(record as unknown as Record<string, unknown>) };
@@ -52,13 +46,15 @@ export function addContribution(record: ContributionRecord): void {
     throw new Error('Refusing to store contribution: record contains an email field');
   }
 
-  const contributions = readContributions();
+  const contributions = await readContributions();
   contributions.push(sanitized as unknown as ContributionRecord);
-  writeFileSync(CONTRIBUTIONS_PATH, JSON.stringify(contributions, null, 2));
+  await writeJson(CONTRIBUTIONS_KEY, contributions);
 }
 
-export function getContributionsByContributor(contributorId: string): ContributionRecord[] {
-  return readContributions().filter(c => c.contributor_id === contributorId);
+export async function getContributionsByContributor(
+  contributorId: string,
+): Promise<ContributionRecord[]> {
+  return (await readContributions()).filter(c => c.contributor_id === contributorId);
 }
 
 // ---------------------------------------------------------------------------
@@ -66,18 +62,13 @@ export function getContributionsByContributor(contributorId: string): Contributi
 // The hash is computed in auth.ts; only the hash ever reaches this file.
 // ---------------------------------------------------------------------------
 
-function readEmailMap(): Record<string, string> {
-  if (!existsSync(EMAILMAP_PATH)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync(EMAILMAP_PATH, 'utf-8'));
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
+async function readEmailMap(): Promise<Record<string, string>> {
+  const parsed = await readJson<Record<string, string>>(EMAILMAP_KEY, {});
+  return parsed && typeof parsed === 'object' ? parsed : {};
 }
 
-export function getContributorIdByHash(emailHash: string): string | null {
-  return readEmailMap()[emailHash] ?? null;
+export async function getContributorIdByHash(emailHash: string): Promise<string | null> {
+  return (await readEmailMap())[emailHash] ?? null;
 }
 
 /**
@@ -85,18 +76,18 @@ export function getContributorIdByHash(emailHash: string): string | null {
  * New hash → generates a UUID contributor_id and stores the mapping.
  * Returns is_new so the verify route can pick the right redirect.
  */
-export function getOrCreateContributorId(emailHash: string): {
+export async function getOrCreateContributorId(emailHash: string): Promise<{
   contributor_id: string;
   is_new: boolean;
-} {
-  const map = readEmailMap();
+}> {
+  const map = await readEmailMap();
   const existing = map[emailHash];
   if (existing) return { contributor_id: existing, is_new: false };
 
   assertWritesAllowed();
   const contributor_id = randomUUID();
   map[emailHash] = contributor_id;
-  writeFileSync(EMAILMAP_PATH, JSON.stringify(map, null, 2));
+  await writeJson(EMAILMAP_KEY, map);
   return { contributor_id, is_new: true };
 }
 

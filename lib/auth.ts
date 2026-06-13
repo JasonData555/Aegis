@@ -1,6 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import path from 'path';
+import { readJson, writeJson } from './blob-store';
 import {
   MAGIC_LINK_TTL_MS,
   SESSION_COOKIE_NAME,
@@ -18,7 +17,7 @@ import type { MagicLinkToken, SessionPayload } from './types';
 
 export { SESSION_COOKIE_NAME };
 
-const TOKENS_PATH = path.join(process.cwd(), 'data', 'tokens.json');
+const TOKENS_KEY = 'tokens.json';
 
 function getSessionSecret(): string {
   const secret = process.env.AEGIS_SESSION_SECRET;
@@ -74,19 +73,14 @@ export function isWorkEmail(email: string): boolean {
 // Magic link tokens (data/tokens.json)
 // ---------------------------------------------------------------------------
 
-function readTokens(): MagicLinkToken[] {
-  if (!existsSync(TOKENS_PATH)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(TOKENS_PATH, 'utf-8'));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+async function readTokens(): Promise<MagicLinkToken[]> {
+  const parsed = await readJson<MagicLinkToken[]>(TOKENS_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
-function writeTokens(tokens: MagicLinkToken[]): void {
+async function writeTokens(tokens: MagicLinkToken[]): Promise<void> {
   assertWritesAllowed();
-  writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+  await writeJson(TOKENS_KEY, tokens);
 }
 
 function pruneExpired(tokens: MagicLinkToken[], now: Date): MagicLinkToken[] {
@@ -96,16 +90,19 @@ function pruneExpired(tokens: MagicLinkToken[], now: Date): MagicLinkToken[] {
 /**
  * 32-byte cryptographically random token, stored with a 15-minute TTL.
  */
-export function createMagicLinkToken(email: string, now: Date = new Date()): string {
+export async function createMagicLinkToken(
+  email: string,
+  now: Date = new Date(),
+): Promise<string> {
   const token = randomBytes(32).toString('hex');
   const record: MagicLinkToken = {
     token,
     email: normalizeEmail(email),
     expires: new Date(now.getTime() + MAGIC_LINK_TTL_MS).toISOString(),
   };
-  const tokens = pruneExpired(readTokens(), now);
+  const tokens = pruneExpired(await readTokens(), now);
   tokens.push(record);
-  writeTokens(tokens);
+  await writeTokens(tokens);
   return token;
 }
 
@@ -113,10 +110,13 @@ export function createMagicLinkToken(email: string, now: Date = new Date()): str
  * Verify a magic link token: returns the email if valid and unexpired,
  * and deletes the token so it can never be used twice.
  */
-export function consumeMagicLinkToken(token: string, now: Date = new Date()): string | null {
-  const tokens = pruneExpired(readTokens(), now);
+export async function consumeMagicLinkToken(
+  token: string,
+  now: Date = new Date(),
+): Promise<string | null> {
+  const tokens = pruneExpired(await readTokens(), now);
   const match = tokens.find(t => t.token === token);
-  writeTokens(tokens.filter(t => t.token !== token));
+  await writeTokens(tokens.filter(t => t.token !== token));
   return match ? match.email : null;
 }
 

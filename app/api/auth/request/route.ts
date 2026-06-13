@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const token = createMagicLinkToken(email);
+  const token = await createMagicLinkToken(email);
   const baseUrl = process.env.AEGIS_BASE_URL ?? 'http://localhost:3001';
   const link = `${baseUrl}/onboarding?token=${token}`;
 
