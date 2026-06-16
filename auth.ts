@@ -1,18 +1,16 @@
 import NextAuth from 'next-auth';
 import authConfig from './auth.config';
-import {
-  getOrCreateContributorIdByLinkedIn,
-  hashLinkedInId,
-  upsertVerification,
-} from './lib/verification-store';
+import { deriveContributorId, upsertVerification } from './lib/verification-store';
 
 // Node-runtime NextAuth instance. The jwt callback's `account && profile`
 // branch runs ONLY during the real OAuth callback (Node), never during edge
-// middleware session refresh — so it is safe to touch the Blob/fs stores here.
+// middleware session refresh.
 //
-// Identity separation: on first auth we hash the LinkedIn `sub`, map it to a
-// contributor_id UUID (linkedin_map.json), and snapshot verification data
-// (verifications.json). Only contributor_id flows into the analytical systems.
+// Identity separation: the contributor_id is DERIVED from SHA-256(linkedin_id)
+// (one-way; the LinkedIn id is never persisted). Deriving it means login needs
+// no storage write, so a storage outage can never block sign-in. The
+// verification snapshot write is best-effort for the same reason. Only
+// contributor_id flows into the analytical systems.
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -34,17 +32,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.linkedin_picture = (p.picture as string | undefined) ?? null;
 
         if (linkedinId) {
-          const { contributor_id } = await getOrCreateContributorIdByLinkedIn(
-            hashLinkedInId(linkedinId),
-          );
+          const contributor_id = deriveContributorId(linkedinId);
           token.contributor_id = contributor_id;
-          // company/location are not available from the OIDC scope — null in
-          // practice; populated only if richer LinkedIn access is added later.
-          await upsertVerification(contributor_id, {
-            title,
-            company: null,
-            location: null,
-          });
+          // Best-effort: a storage failure here must never block login. The
+          // verification snapshot is non-critical (scoring null-safes a missing
+          // record) and is refreshed on the next login. company/location are
+          // not available from the OIDC scope — null in practice.
+          try {
+            await upsertVerification(contributor_id, {
+              title,
+              company: null,
+              location: null,
+            });
+          } catch (e) {
+            console.warn(
+              `[aegis] verification snapshot write skipped: ${
+                e instanceof Error ? e.message : String(e)
+              }`,
+            );
+          }
         }
       }
       return token;

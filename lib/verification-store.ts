@@ -1,17 +1,17 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash } from 'crypto';
 import { readJson, writeJson } from './blob-store';
 
 // ---------------------------------------------------------------------------
 // LinkedIn identity separation + verification data.
-//   linkedin_map.json   — SHA-256(linkedin_id) → contributor_id (UUID). NO
-//                          names, emails, or profile data — only the mapping.
+//   contributor_id      — deterministically DERIVED from SHA-256(linkedin_id)
+//                          (one-way; the LinkedIn id is never persisted). No
+//                          map file is needed, so login requires no storage.
 //   verifications.json   — per-contributor LinkedIn verification snapshot,
-//                          keyed by contributor_id (UUID) only.
-// Both go through lib/blob-store (Vercel Blob in prod, data/<key> locally) so
-// they work on the read-only serverless filesystem.
+//                          keyed by contributor_id only.
+// verifications.json goes through lib/blob-store (Vercel Blob in prod,
+// data/<key> locally) so it works on the read-only serverless filesystem.
 // ---------------------------------------------------------------------------
 
-const LINKEDIN_MAP_KEY = 'linkedin_map.json';
 const VERIFICATIONS_KEY = 'verifications.json';
 
 export interface VerificationRecord {
@@ -35,28 +35,16 @@ function assertWritesAllowed(): void {
   }
 }
 
-/** SHA-256 of the LinkedIn `sub` — only the hash is ever persisted. */
-export function hashLinkedInId(linkedinId: string): string {
-  return createHash('sha256').update(linkedinId).digest('hex');
-}
-
 /**
- * Existing hash → returns the stored contributor_id.
- * New hash → generates a UUID contributor_id and stores the mapping.
+ * Deterministically derive the contributor_id from the LinkedIn `sub`.
+ * SHA-256 is one-way, so the LinkedIn id can never be recovered from the id;
+ * deriving it (rather than storing a map) keeps a stable contributor_id across
+ * logins without any storage write — so login never depends on the data store.
+ * The first 32 hex chars of the hash are formatted as a UUID-shaped string.
  */
-export async function getOrCreateContributorIdByLinkedIn(linkedinIdHash: string): Promise<{
-  contributor_id: string;
-  is_new: boolean;
-}> {
-  const map = await readJson<Record<string, string>>(LINKEDIN_MAP_KEY, {});
-  const existing = map[linkedinIdHash];
-  if (existing) return { contributor_id: existing, is_new: false };
-
-  assertWritesAllowed();
-  const contributor_id = randomUUID();
-  map[linkedinIdHash] = contributor_id;
-  await writeJson(LINKEDIN_MAP_KEY, map);
-  return { contributor_id, is_new: true };
+export function deriveContributorId(linkedinId: string): string {
+  const h = createHash('sha256').update(linkedinId).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
 async function readVerifications(): Promise<Record<string, VerificationRecord>> {

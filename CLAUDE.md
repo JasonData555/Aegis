@@ -110,12 +110,12 @@ lib/
   traction-engine.ts     calcSI, calcTractionScore, classifyTractionZone, calcGovernanceCombination
   anonymization.ts       matchPeers with K=15 + suppression order
   blob-store.ts          readJson/writeJson — Vercel Blob in prod, data/<key> locally
-  verification-store.ts  linkedin_map.json (SHA-256 LinkedIn id → contributor_id) + verifications.json; hashLinkedInId, getOrCreateContributorIdByLinkedIn, upsertVerification, getVerification
+  verification-store.ts  deriveContributorId (SHA-256 LinkedIn id → deterministic id, no storage) + verifications.json; upsertVerification (best-effort), getVerification
   contribution-store.ts  contributions.json I/O, scoreContribution (checks 1–7)
   statement-generator.ts generateNarrative — the four card headlines
   query-engine.ts        executeScorecardQuery → ScorecardResult | SuppressedResult
 auth.config.ts  Edge-safe NextAuth config (LinkedIn provider, pages). auth.ts  Node NextAuth instance (jwt/session callbacks + store writes); exports handlers/auth/signIn/signOut
-data/           contributions.json, linkedin_map.json, verifications.json (all gitignored)
+data/           contributions.json, verifications.json (all gitignored)
 scripts/        validate-traction.ts, validate-equity-confirm.js, validate-scorecard.js, validate-compare.js
 ```
 
@@ -130,8 +130,8 @@ scripts/        validate-traction.ts, validate-equity-confirm.js, validate-score
 ## Data & Privacy Rules
 
 **Identity separation (non-negotiable)**: a contributor's identity (LinkedIn id, name, email) is never stored alongside their data.
-- `linkedin_map.json`: SHA-256(linkedin_id) → contributor_id UUID. No names, emails, or profile data — only the mapping.
-- `verifications.json`: keyed by contributor_id only — LinkedIn-verified title/company/location (null under the OIDC scope) + timestamp. No names or emails.
+- `contributor_id` is **deterministically derived** from `SHA-256(linkedin_id)` (`deriveContributorId`, one-way) — no map file, so login requires no storage write and can't be blocked by a storage outage. The LinkedIn id is never persisted.
+- `verifications.json`: keyed by contributor_id only — LinkedIn-verified title/company/location (null under the OIDC scope) + timestamp. No names or emails. The write is **best-effort** (a failure is logged, never blocks login).
 - NextAuth JWT session cookie carries contributor_id + convenience linkedin_* profile fields (encrypted, never persisted to our JSON stores). The session callback never exposes email.
 - `contributions.json`: contributor_id only. `addContribution()` strips email keys and aborts the write if any `email*` key survives serialization — keep this enforcement at the store layer, not just routes.
 - `data-loader.ts` nulls the `email` field on every survey record at load.
@@ -148,7 +148,7 @@ LinkedIn sign-in is both authentication **and** the first data-verification laye
 
 1. User clicks "Continue with LinkedIn" (`LinkedInSignIn`, calls `signIn('linkedin', { callbackUrl: '/scorecard' })`). Provider: "Sign In with LinkedIn using OpenID Connect", scope `openid profile email` (returns sub/name/email/picture/locale only — no headline/title, company, location, or tenure).
 2. **Split config** (required so edge middleware doesn't bundle Node `fs`/Blob): `auth.config.ts` (edge-safe: provider + pages) and root `auth.ts` (Node: `handlers/auth/signIn/signOut`, jwt/session callbacks). `app/api/auth/[...nextauth]/route.ts` re-exports `handlers`.
-3. On first auth the `jwt` callback (`account && profile`, Node only) hashes `linkedin_id` → `getOrCreateContributorIdByLinkedIn` (`linkedin_map.json`) and `upsertVerification` (`verifications.json`), and puts contributor_id in the token. The `session` callback exposes contributor_id + name/title (never email).
+3. On first auth the `jwt` callback (`account && profile`, Node only) derives contributor_id via `deriveContributorId(linkedin_id)` (no storage), puts it in the token, and best-effort `upsertVerification` (`verifications.json`). The `session` callback exposes contributor_id + name/title (never email).
 4. Post-auth lands on `/scorecard`, which redirects to `/onboarding/contribute` when no contribution is on file (new user) — the contribute page pre-fills role_title from the verification snapshot. Returning users see the scorecard directly.
 5. Middleware (Edge, `NextAuth(authConfig)`) protects `/scorecard/*`, `/compare/*`, `/onboarding/contribute`, `/api/query`, `/api/contribute`; pages → redirect `/`, APIs → 401. `/api/auth/*` is excluded.
 6. Env: `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `NEXTAUTH_SECRET` (32-byte hex), `NEXTAUTH_URL`. LinkedIn Developer Portal app needs redirect `…/api/auth/callback/linkedin` and the OpenID Connect product.
