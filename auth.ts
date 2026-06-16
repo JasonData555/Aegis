@@ -15,6 +15,17 @@ import { deriveContributorId, upsertVerification } from './lib/verification-stor
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   session: { strategy: 'jwt' },
+  // TEMPORARY diagnostic logger — surfaces the underlying cause of auth errors
+  // (the default log truncates it). Remove after diagnosing the callback error.
+  logger: {
+    error(error) {
+      const e = error as Error & { cause?: unknown };
+      const cause = e?.cause as { message?: string; name?: string } | undefined;
+      const causeMsg =
+        cause?.message ?? (typeof cause === 'string' ? cause : JSON.stringify(cause));
+      console.error(`AEGIS_AUTHERR cause=${causeMsg} :: name=${e?.name} msg=${e?.message}`);
+    },
+  },
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account && profile) {
