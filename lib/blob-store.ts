@@ -11,7 +11,14 @@ import path from 'path';
 // ---------------------------------------------------------------------------
 
 function useBlob(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+  // Vercel Blob is available when EITHER a static read-write token is set, OR
+  // the project is connected to a Blob store via OIDC. Vercel's current Blob
+  // integration no longer auto-injects BLOB_READ_WRITE_TOKEN — it injects
+  // BLOB_STORE_ID and provides a per-request OIDC token. The @vercel/blob SDK
+  // (resolveBlobAuth) authenticates automatically from BLOB_STORE_ID + that
+  // OIDC token, so detecting either credential is enough to prefer Blob over
+  // the local-fs fallback.
+  return !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 }
 
 function localPath(key: string): string {
