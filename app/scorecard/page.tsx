@@ -1,7 +1,6 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { auth } from '@/auth';
 import ScorecardView from '@/components/scorecard/ScorecardView';
-import { SESSION_COOKIE_NAME, verifySessionValue } from '@/lib/auth';
 import { getContributionsByContributor } from '@/lib/contribution-store';
 import { loadSurveyData } from '@/lib/data-loader';
 import { executeScorecardQuery } from '@/lib/query-engine';
@@ -12,8 +11,8 @@ import type { ScorecardParams } from '@/lib/types';
 // K=15 suppression returns the calm explanatory state instead of aggregates.
 
 export default async function ScorecardPage() {
-  const session = verifySessionValue(cookies().get(SESSION_COOKIE_NAME)?.value);
-  if (!session) redirect('/'); // middleware is the primary guard
+  const session = await auth();
+  if (!session?.contributor_id) redirect('/'); // middleware is the primary guard
 
   const contributions = await getContributionsByContributor(session.contributor_id);
   if (contributions.length === 0) redirect('/onboarding/contribute');

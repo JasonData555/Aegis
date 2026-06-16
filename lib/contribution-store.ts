@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { readJson, writeJson } from './blob-store';
 import {
   CONTRIBUTION_BASE_CONFIDENCE,
@@ -15,7 +14,6 @@ import type { ContributionRecord, SizeBucket, SurveyRecord } from './types';
 // ---------------------------------------------------------------------------
 
 const CONTRIBUTIONS_KEY = 'contributions.json';
-const EMAILMAP_KEY = 'emailmap.json';
 
 function assertWritesAllowed(): void {
   if (process.env.ALLOW_WRITES !== 'true') {
@@ -58,40 +56,6 @@ export async function getContributionsByContributor(
 }
 
 // ---------------------------------------------------------------------------
-// Email map — data/emailmap.json: SHA-256(email) → contributor_id
-// The hash is computed in auth.ts; only the hash ever reaches this file.
-// ---------------------------------------------------------------------------
-
-async function readEmailMap(): Promise<Record<string, string>> {
-  const parsed = await readJson<Record<string, string>>(EMAILMAP_KEY, {});
-  return parsed && typeof parsed === 'object' ? parsed : {};
-}
-
-export async function getContributorIdByHash(emailHash: string): Promise<string | null> {
-  return (await readEmailMap())[emailHash] ?? null;
-}
-
-/**
- * Existing hash → returns the stored contributor_id.
- * New hash → generates a UUID contributor_id and stores the mapping.
- * Returns is_new so the verify route can pick the right redirect.
- */
-export async function getOrCreateContributorId(emailHash: string): Promise<{
-  contributor_id: string;
-  is_new: boolean;
-}> {
-  const map = await readEmailMap();
-  const existing = map[emailHash];
-  if (existing) return { contributor_id: existing, is_new: false };
-
-  assertWritesAllowed();
-  const contributor_id = randomUUID();
-  map[emailHash] = contributor_id;
-  await writeJson(EMAILMAP_KEY, map);
-  return { contributor_id, is_new: true };
-}
-
-// ---------------------------------------------------------------------------
 // Validation and confidence scoring (Part 7)
 // Submissions are never rejected — they are flagged and weighted.
 // Base 0.70; floor 0.20; ceiling 1.00.
@@ -109,8 +73,32 @@ export interface ContributionScoringInput {
 }
 
 export interface ContributionScoringOptions {
-  email_verified: boolean; // verified via magic link
-  domain_plausible: boolean; // email domain plausibly matches claimed company size
+  linkedin_verified: boolean; // identity verified via LinkedIn OAuth
+  linkedin_verified_title: string | null; // from LinkedIn profile (null under OIDC scope)
+  submitted_role_tier: string; // role_tier the contributor selected
+  linkedin_tenure_months: number | null; // tenure at current role (null under OIDC scope)
+}
+
+// Maps a role_tier to substrings that should appear in a consistent LinkedIn
+// title. Used only when a LinkedIn title is actually available (dormant under
+// the current OIDC scope, which does not return headline/title).
+const ROLE_TIER_TITLE_KEYWORDS: Record<string, string[]> = {
+  CISO: ['ciso', 'chief information security', 'chief security', 'chief information security officer'],
+  'Deputy CISO': ['deputy ciso', 'deputy chief information security', 'deputy security'],
+  'VP Security': ['vp security', 'vice president, security', 'vice president of security', 'vp, security', 'head of security'],
+  'Director Security': ['director', 'security director'],
+};
+
+/**
+ * True when the LinkedIn title is plausibly consistent with the submitted tier.
+ * Conservative: returns true only when we have a keyword table for the tier and
+ * the title contains one of its keywords.
+ */
+function titleMatchesTier(title: string, roleTier: string): boolean {
+  const keywords = ROLE_TIER_TITLE_KEYWORDS[roleTier];
+  if (!keywords) return false;
+  const t = title.toLowerCase();
+  return keywords.some(k => t.includes(k));
 }
 
 export interface ContributionScore {
@@ -144,9 +132,27 @@ export function scoreContribution(
   let confidence = CONTRIBUTION_BASE_CONFIDENCE;
   const flags: string[] = [];
 
-  // Check 1 — work email domain
-  if (options.email_verified) confidence += 0.1;
-  if (options.domain_plausible) confidence += 0.05;
+  // Check 1 — LinkedIn identity verification (replaces work-email domain).
+  // LinkedIn auth is a stronger signal than a verified work email: +0.15.
+  if (options.linkedin_verified) confidence += 0.15;
+
+  // Title consistency: submitted role_tier vs the LinkedIn-verified title.
+  // Dormant under the OIDC scope (title is null) → neutral; fires only when a
+  // title is present.
+  if (options.linkedin_verified_title) {
+    if (titleMatchesTier(options.linkedin_verified_title, options.submitted_role_tier)) {
+      confidence += 0.1;
+    } else {
+      flags.push('title_mismatch');
+      confidence -= 0.1;
+    }
+  }
+
+  // Tenure signal: longer tenure = more accurate comp knowledge. New hires
+  // (<3mo) are neutral; null (unavailable under OIDC) is neutral.
+  if (options.linkedin_tenure_months != null && options.linkedin_tenure_months >= 6) {
+    confidence += 0.03;
+  }
 
   // Check 2 — base salary range vs peer group median
   const peerBases = peers

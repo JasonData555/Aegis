@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE_NAME, verifySessionValue } from '@/lib/auth';
+import { auth } from '@/auth';
 import { executeScorecardQuery } from '@/lib/query-engine';
 import type { ScorecardParams } from '@/lib/types';
 
@@ -48,8 +47,8 @@ function parseParams(body: Record<string, unknown>): ScorecardParams | { error: 
 
 export async function POST(req: Request) {
   // Middleware is the primary guard; this is the server-side fallback
-  const session = verifySessionValue(cookies().get(SESSION_COOKIE_NAME)?.value);
-  if (!session) {
+  const session = await auth();
+  if (!session?.contributor_id) {
     return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
   }
 

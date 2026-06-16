@@ -1,8 +1,8 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE_NAME, verifySessionValue } from '@/lib/auth';
+import { auth } from '@/auth';
 import { addContribution, scoreContribution } from '@/lib/contribution-store';
 import { loadSurveyData } from '@/lib/data-loader';
+import { getVerification } from '@/lib/verification-store';
 import type { ContributionRecord } from '@/lib/types';
 
 // POST /api/contribute — validate, score, and store a contribution.
@@ -19,8 +19,8 @@ function num(v: unknown): number | null {
 }
 
 export async function POST(req: Request) {
-  const session = verifySessionValue(cookies().get(SESSION_COOKIE_NAME)?.value);
-  if (!session) {
+  const session = await auth();
+  if (!session?.contributor_id) {
     return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
   }
 
@@ -80,6 +80,10 @@ export async function POST(req: Request) {
   const peers = (await loadSurveyData()).filter(
     r => r.role_tier === role_tier && r.size_bucket === size_bucket,
   );
+  // LinkedIn verification is the first verification layer. The session is
+  // present (authenticated above) so identity is LinkedIn-verified; title and
+  // tenure come from the verification snapshot (null under the OIDC scope).
+  const verification = await getVerification(session.contributor_id);
   const { contribution_confidence, validation_flags } = scoreContribution(
     {
       size_bucket: size_bucket!,
@@ -92,7 +96,12 @@ export async function POST(req: Request) {
       equity_entry_confirmed,
     },
     peers,
-    { email_verified: true, domain_plausible: false },
+    {
+      linkedin_verified: true,
+      linkedin_verified_title: verification?.linkedin_verified_title ?? null,
+      submitted_role_tier: role_tier!,
+      linkedin_tenure_months: null,
+    },
   );
 
   const now = new Date();

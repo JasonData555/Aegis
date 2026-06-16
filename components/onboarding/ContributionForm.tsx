@@ -393,12 +393,17 @@ function SectionHeader({ title, sub }: { title: string; sub: string }) {
 // The form
 // ---------------------------------------------------------------------------
 
-export default function ContributionForm() {
+export default function ContributionForm({
+  initialRoleTitle = '',
+}: {
+  initialRoleTitle?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0); // 0–3 form steps, 4 = review
 
-  // Step 1
-  const [roleTitle, setRoleTitle] = useState('');
+  // Step 1 — role_title pre-filled from LinkedIn when available (editable; the
+  // contributor may want to generalize it). Empty under the current OIDC scope.
+  const [roleTitle, setRoleTitle] = useState(initialRoleTitle);
   const [roleTier, setRoleTier] = useState<string | null>(null);
   // Step 2
   const [industry, setIndustry] = useState<string | null>(null);

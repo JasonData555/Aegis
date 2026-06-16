@@ -21,6 +21,9 @@ npm-debug.log*
 
 # contributor data — never committed
 data/contributions.json
+data/linkedin_map.json
+data/verifications.json
+# legacy magic-link stores (removed)
 data/tokens.json
 data/emailmap.json
 

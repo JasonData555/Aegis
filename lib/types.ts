@@ -243,18 +243,3 @@ export interface ContributionRecord {
   equity_entry_confirmed: boolean;
   validation_flags: string[];
 }
-
-// ---------------------------------------------------------------------------
-// Auth (magic link)
-// ---------------------------------------------------------------------------
-
-export interface MagicLinkToken {
-  token: string;
-  email: string; // lives only in tokens.json for max 15 minutes
-  expires: string; // ISO datetime
-}
-
-export interface SessionPayload {
-  contributor_id: string;
-  expires: number; // epoch ms
-}

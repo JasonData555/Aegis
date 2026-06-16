@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
 // Wordmark left; right side is "Sign In" on the landing variant or
 // avatar + logout when authenticated.
@@ -11,11 +11,8 @@ export default function AegisHeader({
 }: {
   variant?: 'landing' | 'app';
 }) {
-  const router = useRouter();
-
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/');
+  function handleLogout() {
+    signOut({ callbackUrl: '/' });
   }
 
   const onDark = variant === 'landing';
