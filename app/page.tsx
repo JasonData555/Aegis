@@ -13,11 +13,15 @@ import type { TractionZone } from '@/lib/types';
 // trust bar, exchange, three questions, traction, trust. Landing sections
 // use a wider 1100px container; app pages keep the 760px column.
 
-const CONTRIBUTE_ITEMS = [
-  'Your current role level and company profile',
-  'Your compensation (base, bonus, equity)',
-  'Your employment protection terms',
-  'Your functional scope (optional)',
+const BRING_ROLE = [
+  'Your level, company size, and industry',
+  'Your organizational structure and reporting line',
+];
+
+const BRING_PACKAGE = [
+  'Base, bonus, and annual equity value',
+  'Employment protections: D&O, indemnification, severance, and accelerated vesting',
+  'Functional scope (optional, improves accuracy)',
 ];
 
 const QUESTIONS = [
@@ -134,21 +138,26 @@ export default function LandingPage() {
           <AegisHeader variant="landing" />
           <div className="mx-auto grid w-full max-w-[1100px] items-center gap-14 px-6 pb-24 pt-16 md:grid-cols-[55fr_45fr] md:px-10">
             <div>
-              <h1 className="text-[44px] font-semibold leading-[1.05] tracking-[-0.01em] text-white md:text-[60px]">
-                Know Your Market Value<span className="text-aegis-brand">.</span>
+              <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.01em] text-white md:text-[56px]">
+                <span className="block">Most CISOs are paid for what they own.</span>
+                <span className="block">
+                  The best are paid for where they do it
+                  <span className="text-aegis-brand">.</span>
+                </span>
               </h1>
-              <p className="mt-5 max-w-[420px] text-[18px] leading-[1.6] text-aegis-text-subtle">
-                A private intelligence scorecard for security leaders. See
-                exactly where you stand.
+              <p className="mt-[20px] max-w-[440px] text-[18px] leading-[1.65] text-aegis-text-subtle">
+                A private intelligence scorecard for security leaders, benchmarked
+                against verified peers matched to your role, environment, and
+                governance structure.
               </p>
               <Link
                 href="/onboarding"
                 className="mt-8 inline-flex h-[52px] items-center gap-2 rounded-[10px] bg-aegis-brand px-6 text-[16px] font-medium text-white transition-all duration-200 hover:scale-[1.01] hover:bg-aegis-brand-dark"
               >
-                Get your free scorecard <span aria-hidden>→</span>
+                See where you stand <span aria-hidden>→</span>
               </Link>
               <p className="mt-3 text-[12px] text-aegis-text-muted">
-                Takes 4 minutes · Your data is anonymized · Work email required
+                Takes 4 minutes · Anonymized by architecture · LinkedIn verification
               </p>
             </div>
             <div className="md:px-4">
@@ -157,6 +166,15 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Differentiation strip */}
+      <div className="border-y border-aegis-border bg-aegis-bg-subtle py-[14px]">
+        <p className="mx-auto max-w-[600px] px-6 text-center text-[13px] font-normal leading-[1.6] text-aegis-text-muted">
+          Unlike generic salary surveys, Aegis benchmarks your role against
+          verified security leaders matched to your specific complexity, company
+          size, and governance structure.
+        </p>
+      </div>
 
       {/* 2 — Trust bar */}
       <div className="border-y border-aegis-border bg-aegis-bg-subtle">
@@ -174,28 +192,44 @@ export default function LandingPage() {
       <section className="bg-aegis-bg-base">
         <div className="mx-auto w-full max-w-[1100px] px-6 py-20 md:px-10">
           <h2 className="text-center text-[28px] font-semibold leading-[1.2] tracking-[-0.01em] text-aegis-text-primary">
-            The trade is simple.
+            Intelligence for intelligence.
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-2">
             <Reveal immediate dy={12}>
               <div className="h-full rounded-2xl border border-aegis-border bg-aegis-bg-subtle p-8">
                 <h3 className="text-[18px] font-medium text-aegis-text-primary">
-                  You contribute
+                  What you bring
                 </h3>
-                <ol className="relative mt-6 space-y-6">
-                  {/* Connecting line through the number column */}
-                  <div className="absolute bottom-3 left-[13px] top-3 border-l border-dashed border-aegis-border" />
-                  {CONTRIBUTE_ITEMS.map((item, i) => (
-                    <li key={item} className="relative flex items-start gap-4">
-                      <span className="w-[27px] shrink-0 bg-aegis-bg-subtle text-center text-[18px] font-semibold leading-[1.4] text-aegis-brand">
-                        {i + 1}.
-                      </span>
-                      <span className="pt-0.5 text-[15px] leading-[1.6] text-aegis-text-body">
+                <div className="mt-6">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-aegis-text-muted">
+                    About your role
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {BRING_ROLE.map(item => (
+                      <li
+                        key={item}
+                        className="text-[12px] leading-[1.6] text-aegis-text-body"
+                      >
                         {item}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-[20px]">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-aegis-text-muted">
+                    About your package
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {BRING_PACKAGE.map(item => (
+                      <li
+                        key={item}
+                        className="text-[12px] leading-[1.6] text-aegis-text-body"
+                      >
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </Reveal>
 
@@ -205,23 +239,44 @@ export default function LandingPage() {
                 style={{ border: '1px solid rgba(45,122,107,0.3)' }}
               >
                 <h3 className="text-[18px] font-medium text-aegis-text-primary">
-                  You receive
+                  What you unlock
                 </h3>
                 <div className="mt-6 space-y-6">
+                  {/* Item 1 — Compensation */}
                   <div>
-                    <MiniPercentileBar percentile={68} className="w-[80px]" />
-                    <p className="mt-2.5 text-[13px] text-aegis-text-body">
-                      Your compensation percentile vs. verified peers
+                    <MiniPercentileBar
+                      percentile={68}
+                      markerLabel="You — $487k"
+                      showTicks
+                      className="w-full"
+                    />
+                    <p className="mt-2 text-[14px] font-medium text-aegis-text-primary">
+                      Compensation percentile
+                    </p>
+                    <p className="text-[12px] text-aegis-text-muted">
+                      Where your total package ranks among verified peers matched
+                      to your exact profile
                     </p>
                   </div>
+                  {/* Item 2 — Traction */}
                   <div>
-                    <span className="inline-flex rounded-[20px] bg-aegis-brand px-3 py-1 text-[12px] font-medium leading-none text-white">
-                      Paragon Leader
-                    </span>
-                    <p className="mt-2.5 text-[13px] text-aegis-text-body">
-                      Your Traction Score and zone
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex rounded-[20px] bg-aegis-brand px-3 py-1 text-[12px] font-medium leading-none text-white">
+                        Paragon Leader
+                      </span>
+                      <span className="font-mono text-[13px] text-aegis-text-primary">
+                        Traction Score 18.9
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[14px] font-medium text-aegis-text-primary">
+                      Leadership traction
+                    </p>
+                    <p className="text-[12px] text-aegis-text-muted">
+                      How your functional scope and organizational environment
+                      combine to determine your market value
                     </p>
                   </div>
+                  {/* Item 3 — Governance */}
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-aegis-brand" />
@@ -229,16 +284,24 @@ export default function LandingPage() {
                       <span className="h-2.5 w-2.5 rounded-full bg-aegis-brand" />
                       <span className="h-2.5 w-2.5 rounded-full border-2 border-aegis-border" />
                     </div>
-                    <p className="mt-2.5 text-[13px] text-aegis-text-body">
-                      Your governance gap analysis
+                    <p className="mt-2 text-[14px] font-medium text-aegis-text-primary">
+                      Governance gap
+                    </p>
+                    <p className="text-[12px] text-aegis-text-muted">
+                      Which protections your peers hold that you may be missing,
+                      and what each is worth in total compensation
                     </p>
                   </div>
+                  {/* Item 4 — Permanent access */}
                   <div>
-                    <svg className="h-6 w-6 text-aegis-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 100 8c2 0 4-1.33 6-4zm0 0c2 2.67 4 4 6 4a4 4 0 000-8c-2 0-4 1.33-6 4z" />
-                    </svg>
-                    <p className="mt-2.5 text-[13px] text-aegis-text-body">
-                      Permanent access — contribute once, use forever
+                    <span className="font-mono text-[20px] leading-none text-aegis-brand">
+                      ∞
+                    </span>
+                    <p className="mt-2 text-[14px] font-medium text-aegis-text-primary">
+                      Permanent access
+                    </p>
+                    <p className="text-[12px] text-aegis-text-muted">
+                      Contribute once. Your scorecard updates as the market moves.
                     </p>
                   </div>
                 </div>
