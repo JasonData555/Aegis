@@ -45,3 +45,52 @@
 .animate-slide-down {
   animation: aegis-slide-down 200ms ease;
 }
+
+/* Inline card edit form expands open (300ms, slightly longer than the mode
+   ProspectiveForm). translateY + opacity rather than max-height so the
+   IndustrySelect dropdown isn't clipped once the form has settled. */
+@keyframes aegis-expand-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-expand-down {
+  animation: aegis-expand-down 300ms ease-out;
+}
+
+/* Recompute overlay — pulses softly over each card and the sticky strip while
+   the whole scorecard re-queries (Part 5). aegis-brand-soft at ~40% peak. */
+@keyframes aegis-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-pulse-soft {
+  animation: aegis-pulse-soft 1.5s ease-in-out infinite;
+}
+
+/* Percentile pills and the traction-zone pill fade to their new value after a
+   recompute (Part 5/6). Remount via a React key to retrigger. */
+@keyframes aegis-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: aegis-fade-in 200ms ease;
+}

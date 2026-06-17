@@ -1,11 +1,56 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import CrossfadeText from '@/components/shared/CrossfadeText';
 import GovernanceMeter from '@/components/shared/GovernanceMeter';
-import { CardHeader, ScorecardCard } from './ScorecardCard';
-import type { ScorecardResult } from '@/lib/types';
+import { useCountUp } from '@/components/shared/useCountUp';
+import { PROTECTION_CARDS, ToggleCard } from '@/components/onboarding/contribution-inputs';
+import { type EditableCardControls, EditFormShell, EditNote } from './card-editing';
+import EditControls from './EditControls';
+import { CardHeader, type CardEditState, ScorecardCard } from './ScorecardCard';
+import type { EditableProfile, ScorecardResult } from '@/lib/types';
 
 // Card 3 — Am I protected?
 
-export default function ProtectionCard({ result }: { result: ScorecardResult }) {
+type ProtectionFlags = Pick<
+  EditableProfile,
+  'has_do' | 'has_indemnification' | 'has_severance' | 'has_accel_vest'
+>;
+
+export default function ProtectionCard({
+  result,
+  profile,
+  edit,
+}: {
+  result: ScorecardResult;
+  profile?: EditableProfile;
+  edit?: EditableCardControls;
+}) {
   const gov = result.governance;
+
+  const [draft, setDraft] = useState<ProtectionFlags>({
+    has_do: false,
+    has_indemnification: false,
+    has_severance: false,
+    has_accel_vest: false,
+  });
+
+  useEffect(() => {
+    if (edit?.editing && profile) {
+      setDraft({
+        has_do: profile.has_do,
+        has_indemnification: profile.has_indemnification,
+        has_severance: profile.has_severance,
+        has_accel_vest: profile.has_accel_vest,
+      });
+    }
+  }, [edit?.editing, profile]);
+
+  function handleSave() {
+    edit?.onSave({ ...draft });
+  }
+
+  const animatedCount = useCountUp(gov.protection_count, 300);
 
   // Conditional header tint: full coverage celebrates, zero coverage nudges
   const tintClass =
@@ -15,8 +60,16 @@ export default function ProtectionCard({ result }: { result: ScorecardResult }) 
         ? 'bg-aegis-accent-soft'
         : '';
 
+  const editState: CardEditState = !edit
+    ? 'idle'
+    : edit.editing
+      ? 'editing'
+      : edit.dimmed
+        ? 'dimmed'
+        : 'idle';
+
   return (
-    <ScorecardCard>
+    <ScorecardCard editState={editState} recomputing={edit?.recomputing ?? false}>
       <CardHeader
         tintClass={tintClass}
         icon={
@@ -26,18 +79,29 @@ export default function ProtectionCard({ result }: { result: ScorecardResult }) 
         }
         heading="Employment Protections"
         sub="Your governance coverage vs. verified peers"
+        action={
+          edit && (
+            <EditControls
+              editing={edit.editing}
+              saving={edit.saving}
+              onEdit={edit.onEdit}
+              onCancel={edit.onCancel}
+              onSave={handleSave}
+            />
+          )
+        }
       />
 
       {/* Headline stat */}
       <div className="text-center">
         <div className="leading-tight">
           <span className="font-mono text-[36px] text-aegis-text-primary">
-            {gov.protection_count}
+            {Math.round(animatedCount)}
           </span>
           <span className="ml-2 text-[20px] font-medium text-aegis-text-body">of 4</span>
         </div>
         <p className="mt-2 text-[15px] leading-[1.7] text-aegis-text-body">
-          {result.narrative.protection_headline}
+          <CrossfadeText text={result.narrative.protection_headline} />
         </p>
       </div>
 
@@ -48,6 +112,27 @@ export default function ProtectionCard({ result }: { result: ScorecardResult }) 
           combinationPeerN={result.peer_n}
         />
       </div>
+
+      <EditNote note={edit?.editNote ?? null} />
+
+      {/* ---- Inline edit form -------------------------------------------- */}
+      {edit?.editing && (
+        <EditFormShell label="Update Protections">
+          <div className="space-y-3">
+            {PROTECTION_CARDS.map(card => (
+              <ToggleCard
+                key={card.key}
+                title={card.title}
+                description={card.description}
+                marketNote={card.marketNote}
+                icon={card.icon}
+                on={draft[card.key]}
+                onToggle={() => setDraft(d => ({ ...d, [card.key]: !d[card.key] }))}
+              />
+            ))}
+          </div>
+        </EditFormShell>
+      )}
     </ScorecardCard>
   );
 }

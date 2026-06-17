@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { addContribution, scoreContribution } from '@/lib/contribution-store';
+import { addContribution, scoreContribution, updateContribution } from '@/lib/contribution-store';
 import { loadSurveyData } from '@/lib/data-loader';
 import { getVerification } from '@/lib/verification-store';
 import type { ContributionRecord } from '@/lib/types';
@@ -36,6 +36,9 @@ export async function POST(req: Request) {
   for (const key of Object.keys(body)) {
     if (/email/i.test(key)) delete body[key];
   }
+
+  // Inline scorecard edits revise the existing record instead of appending one
+  const isUpdate = body.method === 'update';
 
   // Required fields
   const role_title = str(body.role_title);
@@ -104,11 +107,9 @@ export async function POST(req: Request) {
     },
   );
 
-  const now = new Date();
-  const record: ContributionRecord = {
-    contributor_id: session.contributor_id,
-    submitted_at: now.toISOString(),
-    survey_year: now.getFullYear(),
+  // Fields an inline scorecard edit may revise. Signing-bonus fields are not
+  // editable inline, so on update they are left untouched (omitted from patch).
+  const editableFields = {
     role_title: role_title!,
     role_tier: role_tier!,
     size_bucket: size_bucket!,
@@ -123,19 +124,30 @@ export async function POST(req: Request) {
     has_indemnification: body.has_indemnification === true,
     has_severance: body.has_severance === true,
     has_accel_vest: body.has_accel_vest === true,
-    has_signing,
-    signing_amount,
     functions,
     team_size,
     metro_tier: str(body.metro_tier),
-    data_version: '1.0',
     contribution_confidence,
     equity_entry_confirmed,
     validation_flags,
   };
 
   try {
-    await addContribution(record);
+    if (isUpdate) {
+      await updateContribution(session.contributor_id, editableFields);
+    } else {
+      const now = new Date();
+      const record: ContributionRecord = {
+        contributor_id: session.contributor_id,
+        submitted_at: now.toISOString(),
+        survey_year: now.getFullYear(),
+        ...editableFields,
+        has_signing,
+        signing_amount,
+        data_version: '1.0',
+      };
+      await addContribution(record);
+    }
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Failed to store contribution.' },
@@ -146,7 +158,7 @@ export async function POST(req: Request) {
   if (validation_flags.length > 0) {
     // Review queue — flagged records are inspected periodically, never excluded
     console.log(
-      `[aegis review-queue] contribution ${record.contributor_id} flagged: ${validation_flags.join(', ')} (confidence ${contribution_confidence})`,
+      `[aegis review-queue] contribution ${session.contributor_id} ${isUpdate ? 'updated' : 'submitted'}, flagged: ${validation_flags.join(', ')} (confidence ${contribution_confidence})`,
     );
   }
 

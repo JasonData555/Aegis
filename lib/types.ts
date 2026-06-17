@@ -160,6 +160,32 @@ export interface ScorecardParams {
   has_accel_vest: boolean;
 }
 
+// Live, editable superset of ScorecardParams held by the scorecard page while
+// inline card editing is active. Carries everything needed to both re-query the
+// benchmark (via profileToParams) and persist the contribution (team_size,
+// role_title), which ScorecardParams omits.
+export interface EditableProfile {
+  // Compensation
+  annual_base: number;
+  annual_bonus: number | null;
+  annual_equity: number | null;
+  // Role structure
+  role_tier: string;
+  industry: string | null;
+  company_structure: string | null;
+  size_bucket: string | null;
+  reporting_line: string | null;
+  board_frequency: string | null;
+  functions: string[];
+  team_size: number | null;
+  role_title: string;
+  // Protections
+  has_do: boolean;
+  has_indemnification: boolean;
+  has_severance: boolean;
+  has_accel_vest: boolean;
+}
+
 export interface ScorecardResult {
   peer_n: number;
   weighted_n: number;
@@ -226,6 +252,7 @@ export interface DataUnavailableResult {
 export interface ContributionRecord {
   contributor_id: string;
   submitted_at: string; // ISO datetime
+  updated_at?: string; // ISO datetime — set when an inline scorecard edit revises the record
   survey_year: number;
   role_title: string;
   role_tier: string;

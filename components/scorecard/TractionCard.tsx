@@ -16,12 +16,18 @@ const ZONE_SENTENCES: Record<TractionZone, string> = {
     'A foundational profile building toward productive traction. Compensation is driven primarily by company size and role level at this stage.',
 };
 
-export default function TractionCard({ result }: { result: ScorecardResult }) {
+export default function TractionCard({
+  result,
+  recomputing = false,
+}: {
+  result: ScorecardResult;
+  recomputing?: boolean;
+}) {
   const t = result.role_structure.traction;
   const si = t.surface_index;
 
   return (
-    <ScorecardCard>
+    <ScorecardCard recomputing={recomputing}>
       <CardHeader
         icon={
           <svg className="h-5 w-5 text-aegis-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

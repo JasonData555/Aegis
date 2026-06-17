@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import ScorecardView from '@/components/scorecard/ScorecardView';
 import { getContributionsByContributor } from '@/lib/contribution-store';
 import { loadSurveyData } from '@/lib/data-loader';
+import { profileFromContribution } from '@/lib/editable-profile';
 import { executeScorecardQuery } from '@/lib/query-engine';
 import type { ScorecardParams } from '@/lib/types';
 
@@ -74,8 +75,7 @@ export default async function ScorecardPage() {
     <ScorecardView
       result={result}
       params={params}
-      roleTitle={latest.role_title}
-      teamSize={latest.team_size}
+      initialProfile={profileFromContribution(latest)}
       datasetN={(await loadSurveyData()).length}
     />
   );

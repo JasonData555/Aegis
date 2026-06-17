@@ -1,8 +1,28 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import CrossfadeText from '@/components/shared/CrossfadeText';
 import ScopeGauge from '@/components/shared/ScopeGauge';
 import TractionMatrix from '@/components/shared/TractionMatrix';
-import { CardHeader, ScorecardCard } from './ScorecardCard';
+import { useCountUp } from '@/components/shared/useCountUp';
+import {
+  BOARD_OPTIONS,
+  FieldLabel,
+  FunctionsSelect,
+  Helper,
+  IndustrySelect,
+  inputClass,
+  PillSelect,
+  REPORTING_OPTIONS,
+  ROLE_LEVELS,
+  SIZE_OPTIONS,
+  STRUCTURE_OPTIONS,
+} from '@/components/onboarding/contribution-inputs';
+import { type EditableCardControls, EditFormShell, EditNote } from './card-editing';
+import EditControls from './EditControls';
+import { CardHeader, type CardEditState, ScorecardCard } from './ScorecardCard';
 import { ZONE_COLORS } from '@/lib/constants';
-import type { ScorecardResult } from '@/lib/types';
+import type { EditableProfile, ScorecardResult } from '@/lib/types';
 
 // Card 2 — Is my role structured right?
 
@@ -36,18 +56,72 @@ export default function RoleStructureCard({
   reportingLine,
   teamSize,
   hasFunctions,
+  profile,
+  edit,
 }: {
   result: ScorecardResult;
   reportingLine: string | null;
   teamSize: number | null;
   hasFunctions: boolean;
+  profile?: EditableProfile;
+  edit?: EditableCardControls;
 }) {
   const rs = result.role_structure;
   const t = rs.traction;
   const [rangeP25, rangeP75] = rs.team_size_peer_range;
 
+  // ---- Edit draft ----------------------------------------------------------
+  const [roleTier, setRoleTier] = useState<string | null>(null);
+  const [sizeBucket, setSizeBucket] = useState<string | null>(null);
+  const [industry, setIndustry] = useState<string | null>(null);
+  const [companyStructure, setCompanyStructure] = useState<string | null>(null);
+  const [reportingDraft, setReportingDraft] = useState<string | null>(null);
+  const [boardFrequency, setBoardFrequency] = useState<string | null>(null);
+  const [teamSizeRaw, setTeamSizeRaw] = useState('');
+  const [functions, setFunctions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (edit?.editing && profile) {
+      setRoleTier(profile.role_tier);
+      setSizeBucket(profile.size_bucket);
+      setIndustry(profile.industry);
+      setCompanyStructure(profile.company_structure);
+      setReportingDraft(profile.reporting_line);
+      setBoardFrequency(profile.board_frequency);
+      setTeamSizeRaw(profile.team_size != null ? String(profile.team_size) : '');
+      setFunctions(profile.functions);
+    }
+  }, [edit?.editing, profile]);
+
+  const saveDisabled =
+    !roleTier || !sizeBucket || !industry || !companyStructure || !reportingDraft || !boardFrequency;
+
+  function handleSave() {
+    edit?.onSave({
+      role_tier: roleTier!,
+      size_bucket: sizeBucket,
+      industry,
+      company_structure: companyStructure,
+      reporting_line: reportingDraft,
+      board_frequency: boardFrequency,
+      team_size: teamSizeRaw === '' ? null : Number(teamSizeRaw),
+      functions,
+    });
+  }
+
+  // ---- Animated display values --------------------------------------------
+  const animatedTraction = useCountUp(t.traction_score, 500);
+
+  const editState: CardEditState = !edit
+    ? 'idle'
+    : edit.editing
+      ? 'editing'
+      : edit.dimmed
+        ? 'dimmed'
+        : 'idle';
+
   return (
-    <ScorecardCard>
+    <ScorecardCard editState={editState} recomputing={edit?.recomputing ?? false}>
       <CardHeader
         icon={
           <svg className="h-5 w-5 text-aegis-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -59,21 +133,34 @@ export default function RoleStructureCard({
         }
         heading="Role Structure"
         sub="How your scope and surface compare"
+        action={
+          edit && (
+            <EditControls
+              editing={edit.editing}
+              saving={edit.saving}
+              saveDisabled={saveDisabled}
+              onEdit={edit.onEdit}
+              onCancel={edit.onCancel}
+              onSave={handleSave}
+            />
+          )
+        }
       />
 
       {/* Headline stat */}
       <div className="text-center">
         <div className="font-mono text-[36px] leading-tight text-aegis-text-primary">
-          {t.traction_score.toFixed(1)}
+          {animatedTraction.toFixed(1)}
         </div>
         <span
-          className="mt-2 inline-block rounded-[20px] px-3 py-1 text-[12px] font-medium text-white"
+          key={t.traction_zone}
+          className="animate-fade-in mt-2 inline-block rounded-[20px] px-3 py-1 text-[12px] font-medium text-white"
           style={{ backgroundColor: ZONE_COLORS[t.traction_zone] }}
         >
           {t.traction_zone}
         </span>
         <p className="mt-2 text-[15px] leading-[1.7] text-aegis-text-body">
-          {result.narrative.traction_headline}
+          <CrossfadeText text={result.narrative.traction_headline} />
         </p>
       </div>
 
@@ -136,6 +223,76 @@ export default function RoleStructureCard({
           <span className="font-mono">{Math.round(rangeP75)}</span>
         </div>
       </div>
+
+      <EditNote note={edit?.editNote ?? null} />
+
+      {/* ---- Inline edit form -------------------------------------------- */}
+      {edit?.editing && (
+        <EditFormShell label="Update Role Structure">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div>
+              <FieldLabel>Role Level</FieldLabel>
+              <PillSelect options={ROLE_LEVELS} value={roleTier} onChange={setRoleTier} />
+            </div>
+            <div>
+              <FieldLabel>Company Size</FieldLabel>
+              <PillSelect options={SIZE_OPTIONS} value={sizeBucket} onChange={setSizeBucket} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="edit_industry">Industry</FieldLabel>
+              <IndustrySelect value={industry} onChange={setIndustry} />
+            </div>
+            <div>
+              <FieldLabel>Company Structure</FieldLabel>
+              <PillSelect
+                options={STRUCTURE_OPTIONS}
+                value={companyStructure}
+                onChange={setCompanyStructure}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="edit_reporting_line">Reports To</FieldLabel>
+              <select
+                id="edit_reporting_line"
+                value={reportingDraft ?? ''}
+                onChange={e => setReportingDraft(e.target.value || null)}
+                className={`${inputClass} appearance-none ${reportingDraft ? '' : 'text-aegis-text-subtle'}`}
+              >
+                <option value="" disabled>
+                  Select who you report to
+                </option>
+                {REPORTING_OPTIONS.map(o => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <FieldLabel>Board Access</FieldLabel>
+              <PillSelect options={BOARD_OPTIONS} value={boardFrequency} onChange={setBoardFrequency} />
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <FieldLabel htmlFor="edit_team_size">Team Size</FieldLabel>
+            <input
+              id="edit_team_size"
+              type="text"
+              inputMode="numeric"
+              value={teamSizeRaw}
+              onChange={e => setTeamSizeRaw(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="0"
+              className={`${inputClass} font-mono text-[14px]`}
+            />
+            <Helper>People who report to you directly or indirectly</Helper>
+          </div>
+
+          <div className="mt-5">
+            <FunctionsSelect selected={functions} onChange={setFunctions} />
+          </div>
+        </EditFormShell>
+      )}
     </ScorecardCard>
   );
 }

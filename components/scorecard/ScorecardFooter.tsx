@@ -1,6 +1,8 @@
-import Link from 'next/link';
+'use client';
 
-// Footer — methodology note + action links.
+// Footer — methodology note + print action. Existing users update their data
+// inline via the Edit button on each card (no round-trip to the contribution
+// form), so only the print action remains here.
 
 export default function ScorecardFooter({ datasetN }: { datasetN: number }) {
   const roundedN = Math.floor(datasetN / 100) * 100;
@@ -14,13 +16,10 @@ export default function ScorecardFooter({ datasetN }: { datasetN: number }) {
         data carries more weight. Individual contributors are never identifiable
         from aggregate outputs.
       </p>
-      <div className="mt-5 flex items-center justify-center gap-6 text-[13px] font-medium">
-        <Link
-          href="/onboarding/contribute"
-          className="text-aegis-brand transition-colors duration-200 hover:text-aegis-brand-dark"
-        >
-          Update your data
-        </Link>
+      <p className="mt-5 text-[13px] text-aegis-text-subtle">
+        To update your profile — use the edit buttons on each card above.
+      </p>
+      <div className="mt-4 flex items-center justify-center text-[13px] font-medium">
         <button
           type="button"
           onClick={() => window.print()}

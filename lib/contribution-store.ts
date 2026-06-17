@@ -55,6 +55,55 @@ export async function getContributionsByContributor(
   return (await readContributions()).filter(c => c.contributor_id === contributorId);
 }
 
+/**
+ * Revise the contributor's latest record in place (used by inline scorecard
+ * editing). No duplicate row is created; submission metadata is preserved and
+ * an `updated_at` timestamp is stamped. Email-key stripping and the serialized
+ * email guard mirror addContribution. Throws if no record exists for the id.
+ */
+export async function updateContribution(
+  contributorId: string,
+  patch: Partial<ContributionRecord>,
+): Promise<ContributionRecord> {
+  assertWritesAllowed();
+
+  const contributions = await readContributions();
+  // Latest record for this contributor (records are appended chronologically)
+  let targetIndex = -1;
+  for (let i = contributions.length - 1; i >= 0; i--) {
+    if (contributions[i].contributor_id === contributorId) {
+      targetIndex = i;
+      break;
+    }
+  }
+  if (targetIndex === -1) {
+    throw new Error('No existing contribution to update for this contributor');
+  }
+
+  const existing = contributions[targetIndex];
+  const merged: Record<string, unknown> = {
+    ...(existing as unknown as Record<string, unknown>),
+    ...(patch as unknown as Record<string, unknown>),
+    // Identity and provenance are never overwritten by a patch
+    contributor_id: existing.contributor_id,
+    submitted_at: existing.submitted_at,
+    survey_year: existing.survey_year,
+    data_version: existing.data_version,
+    updated_at: new Date().toISOString(),
+  };
+  for (const key of FORBIDDEN_KEYS) delete merged[key];
+
+  const serialized = JSON.stringify(merged);
+  if (/"email[^"]*"\s*:/i.test(serialized)) {
+    throw new Error('Refusing to store contribution: record contains an email field');
+  }
+
+  const updated = merged as unknown as ContributionRecord;
+  contributions[targetIndex] = updated;
+  await writeJson(CONTRIBUTIONS_KEY, contributions);
+  return updated;
+}
+
 // ---------------------------------------------------------------------------
 // Validation and confidence scoring (Part 7)
 // Submissions are never rejected — they are flagged and weighted.
