@@ -35,23 +35,33 @@ function parseRecords(raw: string): SurveyRecord[] {
 export async function loadSurveyData(): Promise<SurveyRecord[]> {
   if (_cache) return _cache;
 
+  // Only ever cache a successful, non-empty load. A transient blob fetch
+  // failure (or a missing file) returns an empty set for THIS request but is
+  // NOT cached, so the next request retries instead of serving a poisoned
+  // empty dataset for the life of the serverless instance — which previously
+  // made every scorecard query suppress as "peer group too small".
   const blobUrl = process.env.BLOB_SURVEY_URL;
   if (blobUrl) {
     try {
       const res = await fetch(blobUrl, { cache: 'no-store' });
-      _cache = res.ok ? parseRecords(await res.text()) : [];
+      if (res.ok) {
+        const parsed = parseRecords(await res.text());
+        if (parsed.length > 0) {
+          _cache = parsed;
+          return _cache;
+        }
+      }
     } catch {
-      _cache = [];
+      // fall through to "return empty without caching"
     }
-    return _cache;
+    return [];
   }
 
   const filePath = getSurveyPath();
-  if (!existsSync(filePath)) {
-    _cache = [];
-    return _cache;
-  }
-  _cache = parseRecords(readFileSync(filePath, 'utf-8'));
+  if (!existsSync(filePath)) return [];
+  const parsed = parseRecords(readFileSync(filePath, 'utf-8'));
+  if (parsed.length === 0) return [];
+  _cache = parsed;
   return _cache;
 }
 

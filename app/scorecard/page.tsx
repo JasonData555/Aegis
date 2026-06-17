@@ -39,6 +39,22 @@ export default async function ScorecardPage() {
 
   const result = await executeScorecardQuery(params);
 
+  if ('data_unavailable' in result) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-aegis-bg-base px-6">
+        <div className="max-w-[420px] rounded-2xl bg-aegis-bg-card p-8 text-center shadow-card">
+          <h1 className="text-[22px] font-semibold text-aegis-text-primary">
+            Your scorecard is temporarily unavailable.
+          </h1>
+          <p className="mt-3 text-[14px] leading-[1.7] text-aegis-text-body">
+            We couldn&apos;t load the benchmark data just now. This is on our end, not yours —
+            please refresh in a moment and your results will appear.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   if ('suppression_reason' in result) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-aegis-bg-base px-6">

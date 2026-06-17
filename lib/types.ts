@@ -211,6 +211,14 @@ export interface SuppressedResult {
   suggestion: string;
 }
 
+// Returned when the survey dataset failed to load (0 records reached the
+// engine). This is a backend/data-availability problem, NOT a privacy
+// suppression — surfacing it distinctly prevents a transient outage from
+// masquerading as "your peer group is too small, change your industry".
+export interface DataUnavailableResult {
+  data_unavailable: true;
+}
+
 // ---------------------------------------------------------------------------
 // Contributions (data/contributions.json — never contains an email address)
 // ---------------------------------------------------------------------------

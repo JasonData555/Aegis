@@ -29,7 +29,7 @@ Three comparison modes: **Current** (benchmark my role), **Prospective** (benchm
 - **Validate engine**: `npx tsx scripts/validate-traction.ts`
 - **UI testing**: `playwright-core` (devDep) drives system Chrome via `chromium.launch({ channel: 'chrome' })` — no browser download. See `scripts/validate-equity-confirm.js` (needs dev server + a curl cookie jar with a session). Note: `tsx` cannot evaluate component modules with JSX at module scope — test UI behavior through the browser, not unit imports.
 - **LinkedIn OAuth**: needs a LinkedIn Developer Portal app (OpenID Connect product) with redirect `http://localhost:3001/api/auth/callback/linkedin`. The curl-cookie validate scripts no longer authenticate (NextAuth session ≠ old HMAC cookie) — test auth flows in the browser.
-- `.env.local`: `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `NEXTAUTH_SECRET` (32-byte hex), `NEXTAUTH_URL=http://localhost:3001`, `PARAGON_DATA_PATH=../Paragon/data/survey.json` (capital P — the folder is case-sensitive on Linux), `BLOB_SURVEY_URL`/`BLOB_READ_WRITE_TOKEN` (prod), `ALLOW_WRITES=true`
+- `.env.local` (local dev): `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `NEXTAUTH_SECRET` (32-byte hex), `NEXTAUTH_URL=http://localhost:3001`, `PARAGON_DATA_PATH=../Paragon/data/survey.json` (capital P — the folder is case-sensitive on Linux), `ALLOW_WRITES=true`. No Blob vars locally — `blob-store` falls back to `data/<key>` files and `data-loader` reads `PARAGON_DATA_PATH`. Production env + Blob is different (OIDC) — see **Production & Vercel Storage**.
 
 ## Naming Convention — CRITICAL
 
@@ -109,7 +109,7 @@ lib/
   data-loader.ts         Reads PARAGON_DATA_PATH / BLOB_SURVEY_URL read-only, caches, NULLS EMAILS at load
   traction-engine.ts     calcSI, calcTractionScore, classifyTractionZone, calcGovernanceCombination
   anonymization.ts       matchPeers with K=15 + suppression order
-  blob-store.ts          readJson/writeJson — Vercel Blob in prod, data/<key> locally
+  blob-store.ts          readJson/writeJson — Vercel Blob in prod (OIDC auth, gated on BLOB_READ_WRITE_TOKEN || BLOB_STORE_ID), data/<key> locally. readJson catches + returns fallback (reads never throw); only writes throw.
   verification-store.ts  deriveContributorId (SHA-256 LinkedIn id → deterministic id, no storage) + verifications.json; upsertVerification (best-effort), getVerification
   contribution-store.ts  contributions.json I/O, scoreContribution (checks 1–7)
   statement-generator.ts generateNarrative — the four card headlines
@@ -152,6 +152,16 @@ LinkedIn sign-in is both authentication **and** the first data-verification laye
 4. Post-auth lands on `/scorecard`, which redirects to `/onboarding/contribute` when no contribution is on file (new user) — the contribute page pre-fills role_title from the verification snapshot. Returning users see the scorecard directly.
 5. Middleware (Edge, `NextAuth(authConfig)`) protects `/scorecard/*`, `/compare/*`, `/onboarding/contribute`, `/api/query`, `/api/contribute`; pages → redirect `/`, APIs → 401. `/api/auth/*` is excluded.
 6. Env: `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `NEXTAUTH_SECRET` (32-byte hex), `NEXTAUTH_URL`. LinkedIn Developer Portal app needs redirect `…/api/auth/callback/linkedin` and the OpenID Connect product.
+
+## Production & Vercel Storage (hard-won — read before touching deploy/Blob)
+
+- **Prod URL**: `https://aegis-eta-sepia.vercel.app`. Auto-deploys from GitHub `main`. **`NEXTAUTH_URL` and the LinkedIn redirect URL must match this exactly** (`…/api/auth/callback/linkedin`), and the LinkedIn app needs the **OpenID Connect** product enabled (otherwise the `openid` scope is rejected — LinkedIn shows "Bummer, something went wrong").
+- **Vercel Blob uses OIDC now, not a static token.** Connecting a store injects `BLOB_STORE_ID` (+ `BLOB_WEBHOOK_PUBLIC_KEY`) and authenticates writes via a per-request OIDC token at **runtime**; it does **not** surface a readable `BLOB_READ_WRITE_TOKEN` (Vercel stores it as a Sensitive, write-only var). Consequence: `vercel blob …` CLI commands and `scripts/upload-dataset.js` (which need a static token) **do not work from a laptop**. The `@vercel/blob` SDK auto-resolves OIDC from `BLOB_STORE_ID` + the request-context token, so `put`/`list` just work in the deployed app.
+- **The Blob store must be PUBLIC.** Our code writes `access: 'public'` and the dataset is read by a plain public-URL fetch (`BLOB_SURVEY_URL`). A private store rejects public puts (surfaces as a `Vercel Blob:` error → NextAuth `CallbackRouteError`). Store access is fixed at creation — to change it you recreate the store, which changes `BLOB_STORE_ID` (update the env var + redeploy).
+- **Dataset hosting**: the GitHub repo is **public**, so the Paragon survey (proprietary, has emails) is **never committed**. The email-nulled dataset lives in Blob at `BLOB_SURVEY_URL`; `data-loader.ts` fetches it server-side. Because a laptop can't upload to an OIDC store, **seed/refresh the dataset from Vercel's runtime** (e.g. a temporary secret-protected upload route that `put`s a uploaded, email-nulled `survey.json`), not the CLI.
+- **Storage resilience principle**: reads degrade gracefully (`readJson` returns a fallback), so pages never crash on a Blob outage. Login performs **no blocking write** (deterministic `contributor_id` + best-effort `upsertVerification`), so a storage failure can't reproduce the NextAuth "server configuration" error. Only contribution writes (`/api/contribute`) truly require Blob; on failure the route returns the exact `Vercel Blob: …` message.
+- **Production env (Vercel, Production scope)**: `NEXTAUTH_URL=https://aegis-eta-sepia.vercel.app`, `NEXTAUTH_SECRET`, `LINKEDIN_CLIENT_ID`/`LINKEDIN_CLIENT_SECRET`, `ALLOW_WRITES=true` (**required** or the verification/contribution write guard throws), `BLOB_STORE_ID` (auto-injected by the connected store), `BLOB_SURVEY_URL`. **Do not** set `PARAGON_DATA_PATH` in prod. Env-var changes only apply to **new** deployments — redeploy after changing them.
+- **Debugging**: `mcp` Vercel runtime logs truncate long messages and phrase-match; use short single-word `query` probes (e.g. `Vercel Blob`, `denied`, `store`) to triangulate, or read the untruncated line in the Vercel Dashboard → Logs.
 
 ## Onboarding Form Notes (Part 7 implementation)
 

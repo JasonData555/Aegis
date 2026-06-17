@@ -1,6 +1,6 @@
 import { ZONE_COLORS } from '@/lib/constants';
 import { formatDollarsK, ordinalSuffix } from '@/lib/format';
-import type { ScorecardResult, SuppressedResult } from '@/lib/types';
+import type { DataUnavailableResult, ScorecardResult, SuppressedResult } from '@/lib/types';
 
 // Compare mode — current vs. prospective in two condensed columns with a
 // delta column between them on wide screens.
@@ -94,9 +94,19 @@ export default function CompareView({
   prospective,
 }: {
   current: ScorecardResult;
-  prospective: ScorecardResult | SuppressedResult | null;
+  prospective: ScorecardResult | SuppressedResult | DataUnavailableResult | null;
 }) {
   if (prospective == null) return null;
+
+  if ('data_unavailable' in prospective) {
+    return (
+      <div className="rounded-2xl bg-aegis-bg-card p-6 text-center shadow-card">
+        <p className="text-[14px] leading-[1.7] text-aegis-text-body">
+          Benchmark data is temporarily unavailable. Please try again in a moment.
+        </p>
+      </div>
+    );
+  }
 
   if ('suppression_reason' in prospective) {
     return (

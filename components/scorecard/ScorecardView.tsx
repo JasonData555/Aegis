@@ -17,13 +17,18 @@ import RoleStructureCard from './RoleStructureCard';
 import ScorecardFooter from './ScorecardFooter';
 import ScorecardHeader from './ScorecardHeader';
 import TractionCard from './TractionCard';
-import type { ScorecardParams, ScorecardResult, SuppressedResult } from '@/lib/types';
+import type {
+  DataUnavailableResult,
+  ScorecardParams,
+  ScorecardResult,
+  SuppressedResult,
+} from '@/lib/types';
 
 // Client composition of the scorecard page. The server page computes the
 // current-role ScorecardResult; prospective evaluation queries /api/query
 // dynamically with a 300ms debounce as the form changes.
 
-type QueryOutcome = ScorecardResult | SuppressedResult;
+type QueryOutcome = ScorecardResult | SuppressedResult | DataUnavailableResult;
 
 function FourCards({
   result,
@@ -101,7 +106,9 @@ export default function ScorecardView({
 
   const prospectiveParams = prospectiveToParams(prospectiveInputs);
   const prospectiveReady =
-    prospectiveResult != null && !('suppression_reason' in prospectiveResult);
+    prospectiveResult != null &&
+    !('suppression_reason' in prospectiveResult) &&
+    !('data_unavailable' in prospectiveResult);
 
   return (
     <main className="min-h-screen bg-aegis-bg-base">
@@ -144,6 +151,12 @@ export default function ScorecardView({
                   params={prospectiveParams}
                   teamSize={null}
                 />
+              ) : prospectiveResult && 'data_unavailable' in prospectiveResult ? (
+                <div className="rounded-2xl bg-aegis-bg-card p-6 text-center shadow-card">
+                  <p className="text-[14px] leading-[1.7] text-aegis-text-body">
+                    Benchmark data is temporarily unavailable. Please try again in a moment.
+                  </p>
+                </div>
               ) : prospectiveResult && 'suppression_reason' in prospectiveResult ? (
                 <div className="rounded-2xl bg-aegis-bg-card p-6 text-center shadow-card">
                   <p className="text-[14px] leading-[1.7] text-aegis-text-body">

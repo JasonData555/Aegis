@@ -38,8 +38,8 @@ export default async function ComparePage() {
 
   const result = await executeScorecardQuery(params);
 
-  if ('suppression_reason' in result) {
-    redirect('/scorecard'); // scorecard shows the suppression state
+  if ('suppression_reason' in result || 'data_unavailable' in result) {
+    redirect('/scorecard'); // scorecard shows the suppression / unavailable state
   }
 
   return (

@@ -23,6 +23,7 @@ import { matchPeers } from './anonymization';
 import { generateNarrative } from './statement-generator';
 import type {
   ConfidenceLevel,
+  DataUnavailableResult,
   GovernanceElement,
   ProtectionKey,
   ScorecardParams,
@@ -155,8 +156,13 @@ function calcTractionResult(
 
 export async function executeScorecardQuery(
   params: ScorecardParams,
-): Promise<ScorecardResult | SuppressedResult> {
+): Promise<ScorecardResult | SuppressedResult | DataUnavailableResult> {
   const allWeighted = await loadWeightedData();
+
+  // An empty dataset means the survey failed to load — a data-availability
+  // problem, not a privacy suppression. Returning it distinctly stops a
+  // transient outage from looking like "your peer group is too small".
+  if (allWeighted.length === 0) return { data_unavailable: true };
 
   // K=15 enforcement happens before any aggregate is touched
   const match = matchPeers(allWeighted, params);
