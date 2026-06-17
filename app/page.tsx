@@ -9,9 +9,10 @@ import { ZONE_COLORS, ZONE_MEDIAN_TC } from '@/lib/constants';
 import { formatDollarsK } from '@/lib/format';
 import type { TractionZone } from '@/lib/types';
 
-// Landing page — six sections: dark hero with floating product preview,
-// trust bar, exchange, three questions, traction, trust. Landing sections
-// use a wider 1100px container; app pages keep the 760px column.
+// Landing page — five sections: dark hero with floating product preview,
+// exchange, three questions, traction, trust (a value-prop differentiation
+// strip sits between the hero and exchange). Landing sections use a wider
+// 1100px container; app pages keep the 760px column.
 
 const BRING_ROLE = [
   'Your level, company size, and industry',
@@ -114,13 +115,6 @@ const TRUST_STATEMENTS = [
   },
 ];
 
-const TRUST_BAR_ITEMS = [
-  '1,000+ verified security leaders',
-  '78 industries',
-  'Refreshed annually',
-  'Anonymized by architecture',
-];
-
 export default function LandingPage() {
   return (
     <main>
@@ -139,10 +133,13 @@ export default function LandingPage() {
           <div className="mx-auto grid w-full max-w-[1100px] items-center gap-14 px-6 pb-24 pt-16 md:grid-cols-[55fr_45fr] md:px-10">
             <div>
               <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.01em] text-white md:text-[56px]">
-                <span className="block">Most CISOs are paid for what they own.</span>
                 <span className="block">
-                  The best are paid for where they do it
-                  <span className="text-aegis-brand">.</span>
+                  Most CISOs are paid for{' '}
+                  <span className="text-aegis-brand-light">what they own</span>.
+                </span>
+                <span className="block">
+                  The best are paid for{' '}
+                  <span className="text-aegis-brand-light">where they do it</span>.
                 </span>
               </h1>
               <p className="mt-[20px] max-w-[440px] text-[18px] leading-[1.65] text-aegis-text-subtle">
@@ -168,24 +165,12 @@ export default function LandingPage() {
       </section>
 
       {/* Differentiation strip */}
-      <div className="border-y border-aegis-border bg-aegis-bg-subtle py-[14px]">
-        <p className="mx-auto max-w-[600px] px-6 text-center text-[13px] font-normal leading-[1.6] text-aegis-text-muted">
+      <div className="border-y border-aegis-border bg-aegis-bg-subtle py-[18px]">
+        <p className="mx-auto max-w-[720px] px-6 text-center text-[16px] font-medium leading-[1.6] text-aegis-text-body">
           Unlike generic salary surveys, Aegis benchmarks your role against
           verified security leaders matched to your specific complexity, company
           size, and governance structure.
         </p>
-      </div>
-
-      {/* 2 — Trust bar */}
-      <div className="border-y border-aegis-border bg-aegis-bg-subtle">
-        <div className="mx-auto flex min-h-[56px] w-full max-w-[1100px] flex-wrap items-center justify-center px-6 py-2 text-center text-[13px] text-aegis-text-muted md:px-10">
-          {TRUST_BAR_ITEMS.map((item, i) => (
-            <span key={item}>
-              {i > 0 && <span className="mx-3 text-aegis-brand">·</span>}
-              {item}
-            </span>
-          ))}
-        </div>
       </div>
 
       {/* 3 — Exchange */}
