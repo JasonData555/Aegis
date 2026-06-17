@@ -22,5 +22,10 @@ export default {
   ],
   pages: {
     signIn: '/',
+    // Friendly recovery screen instead of the default /api/auth/error 500.
+    // The most common arrival here is a stale or expired OAuth `state` cookie
+    // that fails to decrypt on callback (InvalidCheck); /auth/error clears the
+    // stale authjs.* cookies and re-initiates a clean sign-in.
+    error: '/auth/error',
   },
 } satisfies NextAuthConfig;
